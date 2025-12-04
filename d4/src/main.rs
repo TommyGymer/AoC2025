@@ -1,11 +1,12 @@
 use std::fs;
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 enum Cell {
     Paper,
     None,
 }
 
+#[derive(Debug)]
 struct Floor {
     data: Vec<Vec<Cell>>,
 }
@@ -65,8 +66,26 @@ impl Floor {
         self.data.get(y)?.get(x)
     }
 
-    fn do_remove(&mut self, conv: Vec<Vec<u8>>) {
-        self.data
+    fn do_remove(&self, conv: Vec<Vec<u8>>) -> Self {
+        Self {
+            data: self
+                .data
+                .iter()
+                .enumerate()
+                .map(|(x, row)| {
+                    row.iter()
+                        .enumerate()
+                        .map(|(y, cell)| {
+                            if *conv.get(x).unwrap().get(y).unwrap() < 4 {
+                                Cell::None
+                            } else {
+                                *cell
+                            }
+                        })
+                        .collect::<Vec<Cell>>()
+                })
+                .collect::<Vec<Vec<Cell>>>(),
+        }
     }
 }
 
@@ -77,7 +96,6 @@ fn main() {
     let mut count = 0;
     let mut should_continue = true;
     while should_continue {
-        println!("{}", count);
         let conv = floor.compute_convolution();
         let res: usize = conv
             .iter()
@@ -85,6 +103,7 @@ fn main() {
             .sum();
         count += res;
         should_continue = res > 0;
+        floor = floor.do_remove(conv);
     }
 
     println!("{}", count);
