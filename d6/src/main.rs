@@ -1,5 +1,6 @@
 use std::fs;
 
+#[derive(Debug)]
 enum Operators {
     Plus,
     Multiply,
@@ -16,7 +17,7 @@ impl From<char> for Operators {
 }
 
 impl Operators {
-    fn apply(&self, a: u32, b: u64) -> u64 {
+    fn apply(&self, a: u64, b: u64) -> u64 {
         match self {
             Self::Plus => a as u64 + b as u64,
             Self::Multiply => a as u64 * b as u64,
@@ -27,53 +28,28 @@ impl Operators {
 fn main() {
     let input = fs::read_to_string("input.txt").unwrap();
 
-    let mut parts = input.split('\n');
-    let (a, b, c, d, o) = (
-        parts
-            .next()
-            .unwrap()
-            .split(' ')
-            .filter(|n| n.len() > 0)
-            .map(|n| u32::from_str_radix(n, 10).unwrap())
-            .collect::<Vec<u32>>(),
-        parts
-            .next()
-            .unwrap()
-            .split(' ')
-            .filter(|n| n.len() > 0)
-            .map(|n| u32::from_str_radix(n, 10).unwrap())
-            .collect::<Vec<u32>>(),
-        parts
-            .next()
-            .unwrap()
-            .split(' ')
-            .filter(|n| n.len() > 0)
-            .map(|n| u32::from_str_radix(n, 10).unwrap())
-            .collect::<Vec<u32>>(),
-        parts
-            .next()
-            .unwrap()
-            .split(' ')
-            .filter(|n| n.len() > 0)
-            .map(|n| u32::from_str_radix(n, 10).unwrap())
-            .collect::<Vec<u32>>(),
-        parts
-            .next()
-            .unwrap()
-            .split(' ')
-            .filter(|o| o.len() > 0)
-            .map(|o| Operators::from(o.chars().into_iter().next().unwrap()))
-            .collect::<Vec<Operators>>(),
-    );
+    let parts = input.split('\n');
+    let num_lines: Vec<Vec<char>> = parts
+        .to_owned()
+        .filter(|line| !(line.contains('+') || line.contains('*')))
+        .map(|line| line.chars().collect())
+        .collect();
+    let ops_line: Vec<char> = parts
+        .filter(|line| line.contains('+') || line.contains('*'))
+        .next()
+        .unwrap()
+        .chars()
+        .collect();
 
-    let res: u64 = a
-        .into_iter()
-        .zip(b)
-        .zip(c)
-        .zip(d)
-        .zip(o)
-        .map(|((((a, b), c), d), o)| o.apply(d, o.apply(c, o.apply(a, b as u64))))
-        .sum();
-
-    println!("{}", res);
+    let mut res = 0;
+    let mut partial_res = 0;
+    let mut i = 0;
+    while i < ops_line.len() {
+        let op = Operators::from(*ops_line.get(i).unwrap());
+        partial_res = num_lines
+            .iter()
+            .map(|line| u64::from_str_radix(&line.get(i).unwrap().to_string(), 10).unwrap())
+            .reduce(|a, b| a * 10 + b)
+            .unwrap();
+    }
 }
