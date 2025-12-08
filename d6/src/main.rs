@@ -48,8 +48,12 @@ fn main() {
         let op = Operators::from(*ops_line.get(i).unwrap());
         partial_res = num_lines
             .iter()
-            .map(|line| u64::from_str_radix(&line.get(i).unwrap().to_string(), 10).unwrap())
-            .reduce(|a, b| a * 10 + b)
-            .unwrap();
+            .filter_map(
+                |line| match u64::from_str_radix(&line.get(i).unwrap().to_string(), 10) {
+                    Ok(i) => Some(i),
+                    Err(_) => None,
+                },
+            )
+            .fold(0, |a, b| a * 10 + b);
     }
 }
