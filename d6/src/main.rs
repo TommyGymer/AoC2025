@@ -1,5 +1,7 @@
 use std::fs;
 
+use itertools::izip;
+
 #[derive(Debug)]
 enum Operators {
     Plus,
@@ -11,7 +13,7 @@ impl From<char> for Operators {
         match value {
             '+' => Self::Plus,
             '*' => Self::Multiply,
-            c => panic!("unknown operator {}", c),
+            c => panic!("unknown operator '{}'", c),
         }
     }
 }
@@ -29,11 +31,10 @@ fn main() {
     let input = fs::read_to_string("input.txt").unwrap();
 
     let parts = input.split('\n');
-    let num_lines: Vec<Vec<char>> = parts
+    let num_lines = parts
         .to_owned()
         .filter(|line| !(line.contains('+') || line.contains('*')))
-        .map(|line| line.chars().collect())
-        .collect();
+        .map(|line| line.chars().collect());
     let ops_line: Vec<char> = parts
         .filter(|line| line.contains('+') || line.contains('*'))
         .next()
@@ -41,19 +42,7 @@ fn main() {
         .chars()
         .collect();
 
-    let mut res = 0;
-    let mut partial_res = 0;
-    let mut i = 0;
-    while i < ops_line.len() {
-        let op = Operators::from(*ops_line.get(i).unwrap());
-        partial_res = num_lines
-            .iter()
-            .filter_map(
-                |line| match u64::from_str_radix(&line.get(i).unwrap().to_string(), 10) {
-                    Ok(i) => Some(i),
-                    Err(_) => None,
-                },
-            )
-            .fold(0, |a, b| a * 10 + b);
-    }
+    num_lines.take(4).zip(ops_line).map(|(a, b, c, d, op)| {});
+
+    println!("{}", res);
 }
