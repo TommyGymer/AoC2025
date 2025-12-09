@@ -1,4 +1,6 @@
-use std::collections::HashMap;
+use std::collections::HashSet;
+
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct Point {
@@ -10,10 +12,7 @@ struct Point {
 impl From<&str> for Point {
     fn from(value: &str) -> Self {
         let parts = value.split(',');
-        let mut nums = parts.take(3).map(|i| {
-            println!("{}", i);
-            u64::from_str_radix(i, 10).unwrap()
-        });
+        let mut nums = parts.take(3).map(|i| u64::from_str_radix(i, 10).unwrap());
         Self {
             x: nums.next().unwrap(),
             y: nums.next().unwrap(),
@@ -51,11 +50,42 @@ fn main() {
         })
         .collect();
 
-    let pair_distance: HashMap<(Point, Point), u64> = pairs
+    let mut pair_distance: Vec<((Point, Point), u64)> = pairs
         .into_iter()
         .map(|(a, b)| {
             let dist = a.distance_square(&b);
             ((a, b), dist)
         })
         .collect();
+    pair_distance.sort_by_key(|((_, _), n)| *n);
+
+    let mut circuits: Vec<HashSet<Point>> = vec![];
+
+    for pair in pair_distance {
+        let n = circuits
+            .iter_mut()
+            .map(|c| match (c.contains(&pair.0.0), c.contains(&pair.0.1)) {
+                // TODO: merging
+                (true, false) => {
+                    c.insert(pair.0.1.to_owned());
+                }
+                (false, true) => {
+                    c.insert(pair.0.0.to_owned());
+                }
+                (false, false) => {}
+                (true, true) => {}
+            })
+            .count();
+        if n == 0 {
+            circuits.push(HashSet::from([pair.0.0, pair.0.1]));
+        }
+    }
+
+    let mut sizes: Vec<usize> = circuits.into_iter().map(|c| c.len()).collect();
+    sizes.sort();
+
+    println!("{:?}", sizes);
+
+    let res = sizes.iter().take(3).fold(1, |a, b| a * b);
+    println!("{}", res);
 }
