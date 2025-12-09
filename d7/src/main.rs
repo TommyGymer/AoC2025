@@ -156,7 +156,7 @@ impl State {
     }
 }
 
-fn main() {
+fn part_1() {
     let input = fs::read_to_string("input.txt").unwrap();
 
     let mut layout: State = State {
@@ -188,4 +188,8 @@ fn main() {
     }
 
     println!("{}", layout.splits);
+}
+
+fn main() {
+    let input = fs::read_to_string("example.txt").unwrap();
 }
