@@ -1,4 +1,4 @@
-use std::{fmt::Display, fs};
+use std::{collections::HashMap, fmt::Display, fs};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Cell {
@@ -190,6 +190,70 @@ fn part_1() {
     println!("{}", layout.splits);
 }
 
+fn update_memo(
+    memo: &mut HashMap<(usize, usize), usize>,
+    depth: usize,
+    location: usize,
+    value: usize,
+) {
+    if !memo.contains_key(&(depth, location)) {
+        memo.insert((depth, location), value);
+    }
+}
+
+fn go_down(
+    memo: &mut HashMap<(usize, usize), usize>,
+    manifold: &Vec<Vec<Cell>>,
+    depth: usize,
+    location: usize,
+) -> usize {
+    match memo.get(&(depth, location)) {
+        Some(value) => *value,
+        None => {
+            let value = match manifold.get(depth + 1) {
+                None => 1,
+                Some(row) => match row.get(location) {
+                    None => 1,
+                    Some(cell) => match cell {
+                        Cell::Empty => go_down(memo, manifold, depth + 1, location),
+                        Cell::Splitter => {
+                            go_down(memo, manifold, depth + 1, location - 1)
+                                + go_down(memo, manifold, depth + 1, location + 1)
+                        }
+                        Cell::Beam | Cell::Start => 1,
+                    },
+                },
+            };
+            update_memo(memo, depth, location, value);
+            value
+        }
+    }
+}
+
 fn main() {
-    let input = fs::read_to_string("example.txt").unwrap();
+    let input = fs::read_to_string("input.txt").unwrap();
+
+    let manifold: Vec<Vec<Cell>> = input
+        .split('\n')
+        .map(|line| {
+            line.chars()
+                .into_iter()
+                .map(Cell::from)
+                .collect::<Vec<Cell>>()
+        })
+        .collect();
+
+    let res = go_down(
+        &mut HashMap::new(),
+        &manifold,
+        0,
+        manifold
+            .first()
+            .unwrap()
+            .iter()
+            .position(|c| *c == Cell::Start)
+            .unwrap(),
+    );
+
+    println!("{}", res);
 }
