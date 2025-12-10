@@ -1,7 +1,5 @@
 use std::collections::HashSet;
 
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
 struct Point {
     x: u64,
