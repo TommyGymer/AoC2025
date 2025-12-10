@@ -31,23 +31,17 @@ impl From<&str> for Point {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Tile {
-    Empty,
-    Red,
-    Green,
+struct Edge<'a> {
+    a: &'a Point,
+    b: &'a Point,
 }
 
-impl Display for Tile {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Empty => ".",
-                Self::Red => "#",
-                Self::Green => "X",
-            }
-        )
+impl<'a> Edge<'a> {
+    fn intersects(&self, other: &Self) -> bool {
+        self.a.x.min(self.b.x) < other.a.x.max(other.b.x)
+            && self.a.x.max(self.b.x) > other.a.x.min(other.b.x)
+            && self.a.y.min(self.b.y) < other.a.y.max(other.b.y)
+            && self.a.y.max(self.b.y) > other.a.y.min(other.b.y)
     }
 }
 
@@ -66,10 +60,58 @@ fn part_1(points: Vec<Point>) {
 }
 
 fn part_2(points: Vec<Point>) {
-    let mut pair_areas: Vec<u64> = Combinations::of_size(points, 2)
+    let mut edges: Vec<Edge> = points
+        .iter()
+        .zip(points.iter().skip(1))
+        .map(|(a, b)| Edge { a: a, b: b })
+        .collect();
+    edges.push(Edge {
+        a: points.last().unwrap(),
+        b: points.first().unwrap(),
+    });
+
+    let mut pair_areas: Vec<u64> = Combinations::of_size(points.to_owned(), 2)
         .map(|vec| {
             let mut i = vec.into_iter();
             (i.next().unwrap(), i.next().unwrap())
+        })
+        .filter(|(a, b)| {
+            let rect_points = [a, &Point { x: a.x, y: b.y }, b, &Point { x: b.x, y: a.y }];
+            let rect_edges = vec![
+                Edge {
+                    a: rect_points[0],
+                    b: rect_points[1],
+                },
+                Edge {
+                    a: rect_points[1],
+                    b: rect_points[2],
+                },
+                Edge {
+                    a: rect_points[2],
+                    b: rect_points[3],
+                },
+                Edge {
+                    a: rect_points[3],
+                    b: rect_points[0],
+                },
+            ];
+            {
+                println!("{:?}", rect_points);
+                println!("{:?}", rect_edges);
+                println!(
+                    "{:?}",
+                    rect_edges
+                        .iter()
+                        .map(|e| edges
+                            .iter()
+                            .filter(|other| e.intersects(other))
+                            .collect::<Vec<&Edge>>())
+                        .collect::<Vec<Vec<&Edge>>>()
+                )
+            }
+            !rect_edges
+                .into_iter()
+                .any(|e| edges.iter().any(|other| e.intersects(other)))
         })
         .map(|(a, b)| a.rect_area(&b))
         .collect();
@@ -80,7 +122,7 @@ fn part_2(points: Vec<Point>) {
 }
 
 fn main() {
-    let input = std::fs::read_to_string("input.txt").unwrap();
+    let input = std::fs::read_to_string("example.txt").unwrap();
 
     let points: Vec<Point> = input
         .split('\n')
@@ -101,5 +143,30 @@ mod test {
         let b = Point { x: 11, y: 1 };
 
         assert_eq!(a.rect_area(&b), 50);
+    }
+
+    #[test]
+    fn test_intersect() {
+        assert!(
+            Edge {
+                a: &Point { x: 1, y: 1 },
+                b: &Point { x: 1, y: 3 },
+            }
+            .intersects(&Edge {
+                a: &Point { x: 0, y: 2 },
+                b: &Point { x: 2, y: 2 }
+            })
+        );
+
+        assert!(
+            Edge {
+                a: &Point { x: 1, y: 1 },
+                b: &Point { x: 3, y: 1 },
+            }
+            .intersects(&Edge {
+                a: &Point { x: 2, y: 0 },
+                b: &Point { x: 2, y: 2 }
+            })
+        )
     }
 }
