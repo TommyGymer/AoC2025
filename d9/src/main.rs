@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use combinatorial::Combinations;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -28,15 +30,28 @@ impl From<&str> for Point {
     }
 }
 
-fn main() {
-    let input = std::fs::read_to_string("input.txt").unwrap();
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Tile {
+    Empty,
+    Red,
+    Green,
+}
 
-    let points: Vec<Point> = input
-        .split('\n')
-        .filter(|line| line.len() > 0)
-        .map(|line| Point::from(line))
-        .collect();
+impl Display for Tile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Empty => ".",
+                Self::Red => "#",
+                Self::Green => "X",
+            }
+        )
+    }
+}
 
+fn part_1(points: Vec<Point>) {
     let mut pair_areas: Vec<u64> = Combinations::of_size(points, 2)
         .map(|vec| {
             let mut i = vec.into_iter();
@@ -48,6 +63,32 @@ fn main() {
     pair_areas.sort();
 
     println!("{:?}", pair_areas.last().unwrap());
+}
+
+fn part_2(points: Vec<Point>) {
+    let mut pair_areas: Vec<u64> = Combinations::of_size(points, 2)
+        .map(|vec| {
+            let mut i = vec.into_iter();
+            (i.next().unwrap(), i.next().unwrap())
+        })
+        .map(|(a, b)| a.rect_area(&b))
+        .collect();
+
+    pair_areas.sort();
+
+    println!("{:?}", pair_areas.last().unwrap());
+}
+
+fn main() {
+    let input = std::fs::read_to_string("input.txt").unwrap();
+
+    let points: Vec<Point> = input
+        .split('\n')
+        .filter(|line| line.len() > 0)
+        .map(|line| Point::from(line))
+        .collect();
+
+    part_2(points);
 }
 
 #[cfg(test)]
