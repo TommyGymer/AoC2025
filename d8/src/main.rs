@@ -60,8 +60,7 @@ fn main() {
     pair_distance.sort_by_key(|((_, _), n)| *n);
 
     let mut circuits: Vec<HashSet<Point>> = vec![];
-    let mut added: HashSet<Point> = HashSet::new();
-    let mut last: (Point, Point) = pair_distance.first().unwrap().0.to_owned();
+    let mut last = None;
 
     for pair in pair_distance.iter() {
         let mut found: Vec<(usize, &mut HashSet<Point>)> = circuits
@@ -73,29 +72,11 @@ fn main() {
         let remove = match found.len() {
             0 => {
                 circuits.push(HashSet::from([pair.0.0, pair.0.1]));
-                if !added.contains(&pair.0.0) {
-                    last.1 = last.0;
-                    last.0 = pair.0.0;
-                }
-                if !added.contains(&pair.0.1) {
-                    last.1 = last.0;
-                    last.0 = pair.0.1;
-                }
-                added.extend([pair.0.0, pair.0.1]);
                 None
             }
             // NOTE: this will only add one of the two points as one is already contained
             1 => {
                 found.first_mut().unwrap().1.extend([pair.0.0, pair.0.1]);
-                if !added.contains(&pair.0.0) {
-                    last.1 = last.0;
-                    last.0 = pair.0.0;
-                }
-                if !added.contains(&pair.0.1) {
-                    last.1 = last.0;
-                    last.0 = pair.0.1;
-                }
-                added.extend([pair.0.0, pair.0.1]);
                 None
             }
             2 => {
@@ -105,15 +86,6 @@ fn main() {
                     .unwrap()
                     .1
                     .extend(update.1.to_owned().into_iter());
-                if !added.contains(&pair.0.0) {
-                    last.1 = last.0;
-                    last.0 = pair.0.0;
-                }
-                if !added.contains(&pair.0.1) {
-                    last.1 = last.0;
-                    last.0 = pair.0.1;
-                }
-                added.extend([pair.0.0, pair.0.1]);
                 Some(update.0)
             }
             i => unreachable!("how is it {}", i),
@@ -124,9 +96,11 @@ fn main() {
                 circuits.swap_remove(remove);
             }
         }
+        if circuits.len() == 1 && circuits.first().unwrap().len() == 1000 && last.is_none() {
+            last = Some(pair);
+            println!("{:?}", pair);
+        }
     }
-
-    println!("{:?}", last);
 
     let mut sizes: Vec<usize> = circuits.into_iter().map(|c| c.len()).collect();
     sizes.sort_by(|a, b| b.cmp(a));
