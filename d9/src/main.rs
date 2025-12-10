@@ -95,7 +95,7 @@ fn part_2(points: Vec<Point>) {
                     b: rect_points[0],
                 },
             ];
-            {
+            if true == false {
                 println!("{:?}", rect_points);
                 println!("{:?}", rect_edges);
                 println!(
@@ -122,7 +122,7 @@ fn part_2(points: Vec<Point>) {
 }
 
 fn main() {
-    let input = std::fs::read_to_string("example.txt").unwrap();
+    let input = std::fs::read_to_string("input.txt").unwrap();
 
     let points: Vec<Point> = input
         .split('\n')
