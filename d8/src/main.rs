@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
 struct Point {
     x: u64,
     y: u64,
@@ -62,23 +62,56 @@ fn main() {
     let mut circuits: Vec<HashSet<Point>> = vec![];
 
     for pair in pair_distance {
-        let n = circuits
-            .iter_mut()
-            .map(|c| match (c.contains(&pair.0.0), c.contains(&pair.0.1)) {
-                // TODO: merging
-                (true, false) => {
-                    c.insert(pair.0.1.to_owned());
-                }
-                (false, true) => {
-                    c.insert(pair.0.0.to_owned());
-                }
-                (false, false) => {}
-                (true, true) => {}
-            })
-            .count();
-        if n == 0 {
-            circuits.push(HashSet::from([pair.0.0, pair.0.1]));
+        println!("-----------------");
+        if [pair.0.0, pair.0.1].contains(&Point {
+            x: 425,
+            y: 690,
+            z: 689,
+        }) {
+            println!("aaaaa!");
         }
+        println!("{:?} {:?}", pair.0.0, pair.0.1);
+        println!("{:?}", circuits);
+        let mut found: Vec<(usize, &mut HashSet<Point>)> = circuits
+            .iter_mut()
+            .enumerate()
+            .filter(|(_, c)| c.contains(&pair.0.0) || c.contains(&pair.0.1))
+            .collect();
+
+        let remove = match found.len() {
+            0 => {
+                println!("new circuit");
+                circuits.push(HashSet::from([pair.0.0, pair.0.1]));
+                None
+            }
+            // NOTE: this will only add one of the two points as one is already contained
+            1 => {
+                println!("was added");
+                let before = found.first().unwrap().1.len();
+                found.first_mut().unwrap().1.extend([pair.0.0, pair.0.1]);
+                assert_eq!(before + 1, found.first().unwrap().1.len());
+                None
+            }
+            2 => {
+                println!("merge!");
+                let update = found.remove(1);
+                found
+                    .first_mut()
+                    .unwrap()
+                    .1
+                    .extend(update.1.to_owned().into_iter());
+                Some(update.0)
+            }
+            i => unreachable!("how is it {}", i),
+        };
+        println!("removing {:?}", remove);
+        match remove {
+            None => {}
+            Some(remove) => {
+                circuits.swap_remove(remove);
+            }
+        }
+        println!("{:?}", circuits);
     }
 
     let mut sizes: Vec<usize> = circuits.into_iter().map(|c| c.len()).collect();
