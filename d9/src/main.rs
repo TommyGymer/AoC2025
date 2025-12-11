@@ -60,6 +60,7 @@ fn part_1(points: Vec<Point>) {
 }
 
 fn part_2(points: Vec<Point>) {
+    // TODO: add rotation detection
     let mut edges: Vec<Edge> = points
         .iter()
         .zip(points.iter().skip(1))
@@ -69,6 +70,8 @@ fn part_2(points: Vec<Point>) {
         a: points.last().unwrap(),
         b: points.first().unwrap(),
     });
+
+    // TODO: check that each of the four corners are within the 4 closest edges in each direction
 
     let mut pair_areas: Vec<u64> = Combinations::of_size(points.to_owned(), 2)
         .map(|vec| {
