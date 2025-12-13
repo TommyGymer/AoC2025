@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
+use rulinalg::{matrix::Matrix, vector::Vector};
 
 #[derive(Debug)]
 struct Machine {
@@ -93,69 +94,32 @@ struct QueuedCounters {
     counters: Vec<usize>,
 }
 
-fn fewest_buttons_counters_recersive(
-    item: QueuedCounters,
-    buttons: &Vec<Vec<usize>>,
-) -> Option<usize> {
-    // NOTE: check if all the counters are zero:
-    // by going from the required state to the starting state
-    if item.counters.iter().all(|l| *l == 0) {
-        Some(item.depth)
-    } else {
-        buttons
-            .iter()
-            .map(|button| {
-                let mut counters = item.counters.to_owned();
-                let sucess: bool = button
-                    .iter()
-                    .map(|i| match counters.get(*i).unwrap().checked_sub(1) {
-                        Some(value) => {
-                            *counters.get_mut(*i).unwrap() = value;
-                            true
-                        }
-                        None => false,
-                    })
-                    .all(|b| b);
-                if sucess {
-                    fewest_buttons_counters_recersive(
-                        QueuedCounters {
-                            depth: item.depth + 1,
-                            counters,
-                        },
-                        buttons,
-                    )
-                } else {
-                    None
-                }
-            })
-            .fold(None, |l, r| match (l, r) {
-                (None, None) => None,
-                (None, Some(i)) => Some(i),
-                (Some(i), None) => Some(i),
-                (Some(l), Some(r)) => {
-                    if l > r {
-                        Some(r)
-                    } else {
-                        Some(l)
-                    }
-                }
-            })
-    }
-}
+fn fewest_buttons_counters(joltages: Vec<usize>, buttons: Vec<Vec<usize>>) -> usize {
+    let biggest_side = joltages.len().max(buttons.len());
+    let mut backing: Vec<f64> = vec![0f64; biggest_side * biggest_side];
+    let _ = buttons
+        .iter()
+        .enumerate()
+        .map(|(r, button)| {
+            button
+                .iter()
+                .map(|c| *backing.get_mut(r * biggest_side + c).unwrap() = 1f64)
+                .collect::<()>()
+        })
+        .collect::<()>();
+    let matrix = Matrix::new(biggest_side, biggest_side, backing);
+    println!("{}", matrix);
+    let res = matrix
+        .solve(Vector::from(
+            joltages.into_iter().map(|i| i as f64).collect::<Vec<f64>>(),
+        ))
+        .expect("unable to solve");
 
-fn fewest_buttons_counters(joltages: Vec<usize>, buttons: &Vec<Vec<usize>>) -> usize {
-    fewest_buttons_counters_recersive(
-        QueuedCounters {
-            depth: 0,
-            counters: joltages,
-        },
-        buttons,
-    )
-    .unwrap()
+    res.into_iter().map(|f| f.round() as usize).sum()
 }
 
 fn main() {
-    let input = std::fs::read_to_string("input.txt").unwrap();
+    let input = std::fs::read_to_string("example.txt").unwrap();
 
     let machine_line = input.split('\n');
     let machines: Vec<Machine> = machine_line
@@ -166,10 +130,10 @@ fn main() {
     let machines_len = machines.len();
 
     let res: usize = machines
-        .into_par_iter()
+        .into_iter()
         .enumerate()
         .map(|(i, machine)| {
-            let res = fewest_buttons_counters(machine.joltages, &machine.buttons);
+            let res = fewest_buttons_counters(machine.joltages, machine.buttons);
             println!("finished machine {} of {}", i, machines_len);
             res
         })
