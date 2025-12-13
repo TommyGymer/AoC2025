@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 #[derive(Debug)]
 struct Machine {
@@ -87,56 +87,71 @@ fn fewest_buttons_lights(lights: Vec<bool>, buttons: Vec<Vec<usize>>) -> usize {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
 struct QueuedCounters {
     depth: usize,
     counters: Vec<usize>,
 }
 
-fn fewest_buttons_counters(joltages: Vec<usize>, buttons: Vec<Vec<usize>>) -> usize {
-    let mut queue: VecDeque<QueuedCounters> = VecDeque::new();
-    queue.push_back(QueuedCounters {
-        depth: 0,
-        counters: joltages,
-    });
-
-    let mut biggest_depth = 0;
-
-    loop {
-        let item = queue.pop_front().unwrap();
-        if item.depth > biggest_depth {
-            println!("now at depth {}", item.depth);
-            biggest_depth = item.depth;
-        }
-        // NOTE: check if all the counters are zero:
-        // by going from the required state to the starting state
-        if item.counters.iter().all(|l| *l == 0) {
-            return item.depth;
-        } else {
-            let _ = buttons
-                .iter()
-                .map(|button| {
-                    let mut counters = item.counters.to_owned();
-                    let sucess: bool = button
-                        .iter()
-                        .map(|i| match counters.get(*i).unwrap().checked_sub(1) {
-                            Some(value) => {
-                                *counters.get_mut(*i).unwrap() = value;
-                                true
-                            }
-                            None => false,
-                        })
-                        .all(|b| b);
-                    if sucess {
-                        queue.push_back(QueuedCounters {
+fn fewest_buttons_counters_recersive(
+    item: QueuedCounters,
+    buttons: &Vec<Vec<usize>>,
+) -> Option<usize> {
+    // NOTE: check if all the counters are zero:
+    // by going from the required state to the starting state
+    if item.counters.iter().all(|l| *l == 0) {
+        Some(item.depth)
+    } else {
+        buttons
+            .iter()
+            .map(|button| {
+                let mut counters = item.counters.to_owned();
+                let sucess: bool = button
+                    .iter()
+                    .map(|i| match counters.get(*i).unwrap().checked_sub(1) {
+                        Some(value) => {
+                            *counters.get_mut(*i).unwrap() = value;
+                            true
+                        }
+                        None => false,
+                    })
+                    .all(|b| b);
+                if sucess {
+                    fewest_buttons_counters_recersive(
+                        QueuedCounters {
                             depth: item.depth + 1,
                             counters,
-                        });
+                        },
+                        buttons,
+                    )
+                } else {
+                    None
+                }
+            })
+            .fold(None, |l, r| match (l, r) {
+                (None, None) => None,
+                (None, Some(i)) => Some(i),
+                (Some(i), None) => Some(i),
+                (Some(l), Some(r)) => {
+                    if l > r {
+                        Some(r)
+                    } else {
+                        Some(l)
                     }
-                })
-                .collect::<()>();
-        }
+                }
+            })
     }
+}
+
+fn fewest_buttons_counters(joltages: Vec<usize>, buttons: &Vec<Vec<usize>>) -> usize {
+    fewest_buttons_counters_recersive(
+        QueuedCounters {
+            depth: 0,
+            counters: joltages,
+        },
+        buttons,
+    )
+    .unwrap()
 }
 
 fn main() {
@@ -148,9 +163,16 @@ fn main() {
         .map(|line| Machine::from(line))
         .collect();
 
+    let machines_len = machines.len();
+
     let res: usize = machines
-        .into_iter()
-        .map(|machine| fewest_buttons_counters(machine.joltages, machine.buttons))
+        .into_par_iter()
+        .enumerate()
+        .map(|(i, machine)| {
+            let res = fewest_buttons_counters(machine.joltages, &machine.buttons);
+            println!("finished machine {} of {}", i, machines_len);
+            res
+        })
         .sum();
 
     println!("{}", res);
