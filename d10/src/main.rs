@@ -50,14 +50,14 @@ impl From<&str> for Machine {
 }
 
 #[derive(Debug)]
-struct Queued {
+struct QueuedLights {
     depth: usize,
     lights: Vec<bool>,
 }
 
-fn fewest_buttons(lights: Vec<bool>, buttons: Vec<Vec<usize>>) -> usize {
-    let mut queue: VecDeque<Queued> = VecDeque::new();
-    queue.push_back(Queued {
+fn fewest_buttons_lights(lights: Vec<bool>, buttons: Vec<Vec<usize>>) -> usize {
+    let mut queue: VecDeque<QueuedLights> = VecDeque::new();
+    queue.push_back(QueuedLights {
         depth: 0,
         lights: lights,
     });
@@ -77,10 +77,62 @@ fn fewest_buttons(lights: Vec<bool>, buttons: Vec<Vec<usize>>) -> usize {
                         .iter()
                         .map(|i| *lights.get_mut(*i).unwrap() = !lights.get(*i).unwrap())
                         .collect::<()>();
-                    queue.push_back(Queued {
+                    queue.push_back(QueuedLights {
                         depth: item.depth + 1,
                         lights,
                     });
+                })
+                .collect::<()>();
+        }
+    }
+}
+
+#[derive(Debug)]
+struct QueuedCounters {
+    depth: usize,
+    counters: Vec<usize>,
+}
+
+fn fewest_buttons_counters(joltages: Vec<usize>, buttons: Vec<Vec<usize>>) -> usize {
+    let mut queue: VecDeque<QueuedCounters> = VecDeque::new();
+    queue.push_back(QueuedCounters {
+        depth: 0,
+        counters: joltages,
+    });
+
+    let mut biggest_depth = 0;
+
+    loop {
+        let item = queue.pop_front().unwrap();
+        if item.depth > biggest_depth {
+            println!("now at depth {}", item.depth);
+            biggest_depth = item.depth;
+        }
+        // NOTE: check if all the counters are zero:
+        // by going from the required state to the starting state
+        if item.counters.iter().all(|l| *l == 0) {
+            return item.depth;
+        } else {
+            let _ = buttons
+                .iter()
+                .map(|button| {
+                    let mut counters = item.counters.to_owned();
+                    let sucess: bool = button
+                        .iter()
+                        .map(|i| match counters.get(*i).unwrap().checked_sub(1) {
+                            Some(value) => {
+                                *counters.get_mut(*i).unwrap() = value;
+                                true
+                            }
+                            None => false,
+                        })
+                        .all(|b| b);
+                    if sucess {
+                        queue.push_back(QueuedCounters {
+                            depth: item.depth + 1,
+                            counters,
+                        });
+                    }
                 })
                 .collect::<()>();
         }
@@ -97,8 +149,8 @@ fn main() {
         .collect();
 
     let res: usize = machines
-        .into_par_iter()
-        .map(|machine| fewest_buttons(machine.lights, machine.buttons))
+        .into_iter()
+        .map(|machine| fewest_buttons_counters(machine.joltages, machine.buttons))
         .sum();
 
     println!("{}", res);
@@ -110,7 +162,7 @@ mod tests {
 
     #[test]
     fn test_fewest_buttons() {
-        let res = fewest_buttons(
+        let res = fewest_buttons_lights(
             vec![false, true, true, true, false, true],
             vec![vec![0, 3, 4], vec![0, 1, 2, 4, 5]],
         );
