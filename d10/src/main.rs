@@ -1,7 +1,9 @@
-use std::collections::VecDeque;
+mod nnls;
 
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
-use rulinalg::{matrix::Matrix, vector::Vector};
+use ndarray::{Array1, Array2, arr1};
+use nnls::nnls;
+use rayon::iter::{ParallelBridge, ParallelIterator};
+use std::collections::VecDeque;
 
 #[derive(Debug)]
 struct Machine {
@@ -95,31 +97,97 @@ struct QueuedCounters {
 }
 
 fn fewest_buttons_counters(joltages: Vec<usize>, buttons: Vec<Vec<usize>>) -> usize {
-    let biggest_side = joltages.len().max(buttons.len());
-    let mut backing: Vec<f64> = vec![0f64; biggest_side * biggest_side];
+    let mut a: Array2<f64> = Array2::zeros((joltages.len(), buttons.len()));
     let _ = buttons
         .iter()
         .enumerate()
-        .map(|(r, button)| {
-            button
-                .iter()
-                .map(|c| *backing.get_mut(r * biggest_side + c).unwrap() = 1f64)
+        .map(|(j, row)| {
+            row.into_iter()
+                .map(|col| {
+                    a[[*col, j]] = 1f64;
+                })
                 .collect::<()>()
         })
         .collect::<()>();
-    let matrix = Matrix::new(biggest_side, biggest_side, backing);
-    println!("{}", matrix);
-    let res = matrix
-        .solve(Vector::from(
-            joltages.into_iter().map(|i| i as f64).collect::<Vec<f64>>(),
-        ))
-        .expect("unable to solve");
+    let b: Array1<f64> = arr1(
+        joltages
+            .iter()
+            .map(|i| *i as f64)
+            .collect::<Vec<f64>>()
+            .as_slice(),
+    );
 
-    res.into_iter().map(|f| f.round() as usize).sum()
+    // get an approximate solution
+    let (sol, _) = nnls(a.view(), b.view());
+    // println!("{:?}", sol);
+
+    // determine an exact solution
+    // println!("{:?}", joltages);
+    let joltages_len = joltages.len();
+    let combinations = 4usize.pow(sol.len() as u32);
+    (0..combinations)
+        .map(|i| {
+            let mut presses = 0;
+            let counters = buttons
+                .iter()
+                .zip(sol.to_vec())
+                .enumerate()
+                .map(|(j, (button, s))| {
+                    if i & (1 << (j * 2)) == 0 {
+                        let mut counters = vec![0; joltages_len];
+                        presses += if i & (1 << (j * 2 + 1)) == 0 {
+                            s.floor()
+                        } else {
+                            s.floor() - 1f64
+                        } as usize;
+                        let _ = button
+                            .iter()
+                            .map(|b| {
+                                *counters.get_mut(*b).unwrap() += if i & (1 << (j * 2 + 1)) == 0 {
+                                    s.floor()
+                                } else {
+                                    s.floor() - 1f64
+                                }
+                                    as usize
+                            })
+                            .collect::<()>();
+                        counters
+                    } else {
+                        let mut counters = vec![0; joltages.len()];
+                        presses += if i & (1 << (j * 2 + 1)) == 0 {
+                            s.ceil()
+                        } else {
+                            s.ceil() + 1f64
+                        } as usize;
+                        let _ = button
+                            .iter()
+                            .map(|b| {
+                                *counters.get_mut(*b).unwrap() += if i & (1 << (j * 2 + 1)) == 0 {
+                                    s.ceil()
+                                } else {
+                                    s.ceil() + 1f64
+                                }
+                                    as usize
+                            })
+                            .collect::<()>();
+                        counters
+                    }
+                })
+                .reduce(|a, b| a.iter().zip(b).map(|(a, b)| a + b).collect())
+                .expect("there were no buttons");
+            (presses, counters)
+        })
+        .filter(|(_, counters)| {
+            println!("{:?} == {:?}", joltages, counters);
+            joltages.eq(counters)
+        })
+        .reduce(|a, b| if a.0 < b.0 { a } else { b })
+        .expect("there were no matches")
+        .0
 }
 
 fn main() {
-    let input = std::fs::read_to_string("example.txt").unwrap();
+    let input = std::fs::read_to_string("input.txt").expect("unable to read file");
 
     let machine_line = input.split('\n');
     let machines: Vec<Machine> = machine_line
@@ -134,7 +202,7 @@ fn main() {
         .enumerate()
         .map(|(i, machine)| {
             let res = fewest_buttons_counters(machine.joltages, machine.buttons);
-            println!("finished machine {} of {}", i, machines_len);
+            println!("finished machine {} of {}", i + 1, machines_len);
             res
         })
         .sum();
