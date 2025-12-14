@@ -118,13 +118,14 @@ fn fewest_buttons_counters(joltages: Vec<usize>, buttons: Vec<Vec<usize>>) -> us
     );
 
     // get an approximate solution
-    let (sol, _) = nnls(a.view(), b.view());
+    let (sol, err) = nnls(a.view(), b.view());
+    println!("{:?}", err);
     // println!("{:?}", sol);
 
     // determine an exact solution
     // println!("{:?}", joltages);
     let joltages_len = joltages.len();
-    let combinations = 4usize.pow(sol.len() as u32);
+    let combinations = 2usize.pow(sol.len() as u32);
     (0..combinations)
         .map(|i| {
             let mut presses = 0;
@@ -133,42 +134,20 @@ fn fewest_buttons_counters(joltages: Vec<usize>, buttons: Vec<Vec<usize>>) -> us
                 .zip(sol.to_vec())
                 .enumerate()
                 .map(|(j, (button, s))| {
-                    if i & (1 << (j * 2)) == 0 {
+                    if i & (1 << j) == 0 {
                         let mut counters = vec![0; joltages_len];
-                        presses += if i & (1 << (j * 2 + 1)) == 0 {
-                            s.floor()
-                        } else {
-                            s.floor() - 1f64
-                        } as usize;
+                        presses += s.floor() as usize;
                         let _ = button
                             .iter()
-                            .map(|b| {
-                                *counters.get_mut(*b).unwrap() += if i & (1 << (j * 2 + 1)) == 0 {
-                                    s.floor()
-                                } else {
-                                    s.floor() - 1f64
-                                }
-                                    as usize
-                            })
+                            .map(|b| *counters.get_mut(*b).unwrap() += s.floor() as usize)
                             .collect::<()>();
                         counters
                     } else {
                         let mut counters = vec![0; joltages.len()];
-                        presses += if i & (1 << (j * 2 + 1)) == 0 {
-                            s.ceil()
-                        } else {
-                            s.ceil() + 1f64
-                        } as usize;
+                        presses += s.ceil() as usize;
                         let _ = button
                             .iter()
-                            .map(|b| {
-                                *counters.get_mut(*b).unwrap() += if i & (1 << (j * 2 + 1)) == 0 {
-                                    s.ceil()
-                                } else {
-                                    s.ceil() + 1f64
-                                }
-                                    as usize
-                            })
+                            .map(|b| *counters.get_mut(*b).unwrap() += s.ceil() as usize)
                             .collect::<()>();
                         counters
                     }
@@ -178,7 +157,7 @@ fn fewest_buttons_counters(joltages: Vec<usize>, buttons: Vec<Vec<usize>>) -> us
             (presses, counters)
         })
         .filter(|(_, counters)| {
-            println!("{:?} == {:?}", joltages, counters);
+            // println!("{:?} == {:?}", joltages, counters);
             joltages.eq(counters)
         })
         .reduce(|a, b| if a.0 < b.0 { a } else { b })
@@ -187,7 +166,7 @@ fn fewest_buttons_counters(joltages: Vec<usize>, buttons: Vec<Vec<usize>>) -> us
 }
 
 fn main() {
-    let input = std::fs::read_to_string("input.txt").expect("unable to read file");
+    let input = std::fs::read_to_string("example.txt").expect("unable to read file");
 
     let machine_line = input.split('\n');
     let machines: Vec<Machine> = machine_line
