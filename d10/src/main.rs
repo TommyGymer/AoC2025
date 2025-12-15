@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 use z3::{
     Solver,
@@ -127,6 +127,28 @@ fn fewest_buttons_counters(joltages: Vec<usize>, buttons: Vec<Vec<usize>>) -> us
         .collect();
 
     // link buttons and joltages
+    let _ = joltage_counters
+        .iter()
+        .enumerate()
+        .map(|(i, counter)| {
+            solver.assert(
+                counter.eq(buttons
+                    .iter()
+                    .zip(button_presses)
+                    .filter_map(|(b, token)| if b.contains(&i) { Some(token) } else { None })
+                    .sum()),
+            )
+        })
+        .collect();
+
+    solver
+        .solutions(button_presses, false)
+        .next()
+        .unwrap()
+        .into_iter()
+        .filter_map(Int::as_u64)
+        .map(|i| i as usize)
+        .sum()
 }
 
 fn main() {
