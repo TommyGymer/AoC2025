@@ -126,7 +126,7 @@ impl ButtonCounterProblem {
     }
 
     fn add_button(&mut self, button: Vec<u64>) -> Variable {
-        let presses = self.vars.add(variable().min(0));
+        let presses = self.vars.add(variable().min(0).integer());
         self.total_presses += presses;
         let _ = button
             .into_iter()
@@ -163,7 +163,11 @@ fn fewest_buttons_counters(joltages: Vec<u64>, buttons: Vec<Vec<u64>>) -> u64 {
     let solution = button_problem.least_presses();
     presses
         .into_iter()
-        .map(|p| solution.value(p).round() as u64)
+        .map(|p| {
+            let f = solution.value(p);
+            println!("{}", f);
+            f.round() as u64
+        })
         .sum()
 }
 
