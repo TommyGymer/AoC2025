@@ -14,6 +14,12 @@ impl Point {
     }
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct CompressedPoint {
+    original: Point,
+    compressed: Point,
+}
+
 impl From<&str> for Point {
     fn from(value: &str) -> Self {
         let mut values = value
@@ -59,7 +65,7 @@ fn part_1(points: Vec<Point>) {
     println!("{:?}", pair_areas.last().unwrap());
 }
 
-fn part_2(points: Vec<Point>) {
+fn part_2(points: Vec<CompressedPoint>) {
     // TODO: add rotation detection
     let mut edges: Vec<Edge> = points
         .iter()
@@ -127,10 +133,34 @@ fn part_2(points: Vec<Point>) {
 fn main() {
     let input = std::fs::read_to_string("input.txt").unwrap();
 
-    let points: Vec<Point> = input
+    let mut points: Vec<(Point, Option<u32>, Option<u32>)> = input
         .split('\n')
         .filter(|line| line.len() > 0)
-        .map(|line| Point::from(line))
+        .map(|line| (Point::from(line), None, None))
+        .collect();
+
+    points.sort_by_key(|p| p.0.x);
+    points
+        .iter_mut()
+        .enumerate()
+        .map(|(i, (_, x, _))| *x = Some(i as u32))
+        .collect::<()>();
+    points.sort_by_key(|p| p.0.y);
+    points
+        .iter_mut()
+        .enumerate()
+        .map(|(i, (_, _, y))| *y = Some(i as u32))
+        .collect::<()>();
+
+    let points: Vec<CompressedPoint> = points
+        .into_iter()
+        .map(|(p, x, y)| CompressedPoint {
+            original: p,
+            compressed: Point {
+                x: x.unwrap(),
+                y: y.unwrap(),
+            },
+        })
         .collect();
 
     part_2(points);
