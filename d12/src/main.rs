@@ -3,10 +3,27 @@ struct Shape {
     shape: [[bool; 3]; 3],
 }
 
+impl Shape {
+    fn area(&self) -> u32 {
+        self.shape
+            .iter()
+            .map(|row| row.iter().filter(|c| **c).count())
+            .sum::<usize>() as u32
+    }
+}
+
 #[derive(Debug)]
 struct Area {
     size: (u32, u32),
     shapes: Vec<u8>,
+}
+
+impl Area {
+    fn area(&self) -> u32 {
+        self.size.0 * self.size.1
+    }
+
+    fn add_shape(&mut self, shape: &Shape) {}
 }
 
 impl From<&Vec<&str>> for Shape {
@@ -34,8 +51,16 @@ impl From<&Vec<&str>> for Shape {
     }
 }
 
+fn fit_shapes_recursive(area: &Area, shapes: &Vec<Shape>) -> bool {
+    true
+}
+
+fn fit_shapes(area: &Area, shapes: &Vec<Shape>) -> bool {
+    fit_shapes_recursive(area, shapes)
+}
+
 fn main() {
-    let input = std::fs::read_to_string("example.txt").unwrap();
+    let input = std::fs::read_to_string("input.txt").unwrap();
 
     let sections = input.split("\n\n");
     // NOTE: both inputs have 6 shapes
@@ -81,7 +106,20 @@ fn main() {
     println!("{:?}", shapes);
     println!("{:?}", areas);
 
-    let res: u32 = areas.into_iter().map(|area| {}).sum();
+    println!("starting with {} areas", areas.len());
 
-    println!("{}", res)
+    let res: usize = areas
+        .into_iter()
+        .filter(|area| {
+            area.shapes
+                .iter()
+                .zip(&shapes)
+                .map(|(count, shape)| *count as u32 * shape.area())
+                .sum::<u32>()
+                <= area.area()
+        })
+        .filter(|area| fit_shapes(&area, &shapes))
+        .count();
+
+    println!("pruned to {} areas", res)
 }
