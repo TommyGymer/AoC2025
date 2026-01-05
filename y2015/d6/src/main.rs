@@ -37,29 +37,38 @@ fn main() {
         if let Some(rem) = line.strip_prefix("turn on ") {
             let (a, b) = parse_range(rem);
 
-            for x in a.x.min(b.x)..a.x.max(b.x) {
-                for y in a.y.min(b.y)..a.y.max(b.y) {
+            for x in a.x.min(b.x)..=a.x.max(b.x) {
+                for y in a.y.min(b.y)..=a.y.max(b.y) {
                     *space.get_mut(x).unwrap().get_mut(y).unwrap() = true;
                 }
             }
         } else if let Some(rem) = line.strip_prefix("turn off ") {
             let (a, b) = parse_range(rem);
 
-            for x in a.x.min(b.x)..a.x.max(b.x) {
-                for y in a.y.min(b.y)..a.y.max(b.y) {
+            for x in a.x.min(b.x)..=a.x.max(b.x) {
+                for y in a.y.min(b.y)..=a.y.max(b.y) {
                     *space.get_mut(x).unwrap().get_mut(y).unwrap() = false;
                 }
             }
         } else if let Some(rem) = line.strip_prefix("toggle ") {
             let (a, b) = parse_range(rem);
 
-            for x in a.x.min(b.x)..a.x.max(b.x) {
-                for y in a.y.min(b.y)..a.y.max(b.y) {
-                    *space.get_mut(x).unwrap().get_mut(y).unwrap();
+            for x in a.x.min(b.x)..=a.x.max(b.x) {
+                for y in a.y.min(b.y)..=a.y.max(b.y) {
+                    *space.get_mut(x).unwrap().get_mut(y).unwrap() =
+                        !space.get(x).unwrap().get(y).unwrap();
                 }
             }
         } else {
             unreachable!()
         }
     }
+
+    println!(
+        "{}",
+        space
+            .iter()
+            .map(|row| row.iter().map(|&b| if b { 1 } else { 0 }).sum::<usize>())
+            .sum::<usize>()
+    );
 }
