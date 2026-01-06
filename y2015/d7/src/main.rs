@@ -1,13 +1,18 @@
-use std::{error::Error, fmt::Display, fs};
+use std::{
+    collections::{HashMap, HashSet},
+    error::Error,
+    fmt::Display,
+    fs,
+};
 
 use nom::{
     IResult, Parser,
     branch::alt,
-    bytes::complete::{tag, take_till, take_until, take_while},
+    bytes::complete::{tag, take_till},
     combinator::map_res,
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum Operator {
     AND,
     OR,
@@ -49,7 +54,7 @@ fn operator(input: &str) -> IResult<&str, Operator> {
     map_res(take_till(|c| c == ' ' || c == '\n'), Operator::from_str).parse(input)
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 struct Variable {
     name: String,
 }
@@ -106,7 +111,7 @@ fn assign_expr(input: &str) -> IResult<&str, Expr> {
         input,
         Expr {
             operator: Operator::ASSIGN,
-            operands: vec![],
+            operands: vec![a],
             destination: dest,
         },
     ))
@@ -157,15 +162,160 @@ fn main() {
 
     let lines: Vec<&str> = input.split('\n').filter(|line| line.len() > 0).collect();
 
-    let exprs: Vec<Expr> = lines
+    let exprs: Vec<(usize, Expr)> = lines
         .into_iter()
         .enumerate()
         .filter_map(|(i, line)| match expr(line) {
-            Ok((_, e)) => Some(e),
+            Ok((_, e)) => Some((i, e)),
             Err(error) => {
                 println!("line {}: {:?}", i, error);
                 None
             }
         })
         .collect();
+
+    let mut state: HashMap<&Variable, u16> = HashMap::new();
+    let mut applied: HashSet<usize> = HashSet::new();
+
+    let exprs_len = exprs.len();
+    while applied.len() < exprs_len {
+        for (i, expr) in exprs.iter() {
+            if applied.contains(i) {
+                continue;
+            }
+
+            match expr.operator {
+                Operator::ASSIGN => match expr.operands.first().unwrap() {
+                    Operand::LIT(value) => {
+                        state.insert(&expr.destination, *value);
+                        applied.insert(*i);
+                    }
+                    Operand::VAR(name) => {
+                        if let Some(value) = state.get(name) {
+                            state.insert(&expr.destination, *value);
+                            applied.insert(*i);
+                        }
+                    }
+                },
+                Operator::AND => {
+                    match (expr.operands.get(0).unwrap(), expr.operands.get(1).unwrap()) {
+                        (Operand::LIT(a), Operand::LIT(b)) => {
+                            state.insert(&expr.destination, a & b);
+                            applied.insert(*i);
+                        }
+                        (Operand::LIT(a), Operand::VAR(b)) => {
+                            if let Some(value) = state.get(b) {
+                                state.insert(&expr.destination, a & value);
+                                applied.insert(*i);
+                            }
+                        }
+                        (Operand::VAR(a), Operand::LIT(b)) => {
+                            if let Some(value) = state.get(a) {
+                                state.insert(&expr.destination, value & b);
+                                applied.insert(*i);
+                            }
+                        }
+                        (Operand::VAR(a), Operand::VAR(b)) => {
+                            if let (Some(a_value), Some(b_value)) = (state.get(a), state.get(b)) {
+                                state.insert(&expr.destination, a_value & b_value);
+                                applied.insert(*i);
+                            }
+                        }
+                    }
+                }
+                Operator::OR => {
+                    match (expr.operands.get(0).unwrap(), expr.operands.get(1).unwrap()) {
+                        (Operand::LIT(a), Operand::LIT(b)) => {
+                            state.insert(&expr.destination, a | b);
+                            applied.insert(*i);
+                        }
+                        (Operand::LIT(a), Operand::VAR(b)) => {
+                            if let Some(value) = state.get(b) {
+                                state.insert(&expr.destination, a | value);
+                                applied.insert(*i);
+                            }
+                        }
+                        (Operand::VAR(a), Operand::LIT(b)) => {
+                            if let Some(value) = state.get(a) {
+                                state.insert(&expr.destination, value | b);
+                                applied.insert(*i);
+                            }
+                        }
+                        (Operand::VAR(a), Operand::VAR(b)) => {
+                            if let (Some(a_value), Some(b_value)) = (state.get(a), state.get(b)) {
+                                state.insert(&expr.destination, a_value | b_value);
+                                applied.insert(*i);
+                            }
+                        }
+                    }
+                }
+                Operator::LSHIFT => {
+                    match (expr.operands.get(0).unwrap(), expr.operands.get(1).unwrap()) {
+                        (Operand::LIT(a), Operand::LIT(b)) => {
+                            state.insert(&expr.destination, a << b);
+                            applied.insert(*i);
+                        }
+                        (Operand::LIT(a), Operand::VAR(b)) => {
+                            if let Some(value) = state.get(b) {
+                                state.insert(&expr.destination, a << value);
+                                applied.insert(*i);
+                            }
+                        }
+                        (Operand::VAR(a), Operand::LIT(b)) => {
+                            if let Some(value) = state.get(a) {
+                                state.insert(&expr.destination, value << b);
+                                applied.insert(*i);
+                            }
+                        }
+                        (Operand::VAR(a), Operand::VAR(b)) => {
+                            if let (Some(a_value), Some(b_value)) = (state.get(a), state.get(b)) {
+                                state.insert(&expr.destination, a_value << b_value);
+                                applied.insert(*i);
+                            }
+                        }
+                    }
+                }
+                Operator::RSHIFT => {
+                    match (expr.operands.get(0).unwrap(), expr.operands.get(1).unwrap()) {
+                        (Operand::LIT(a), Operand::LIT(b)) => {
+                            state.insert(&expr.destination, a >> b);
+                            applied.insert(*i);
+                        }
+                        (Operand::LIT(a), Operand::VAR(b)) => {
+                            if let Some(value) = state.get(b) {
+                                state.insert(&expr.destination, a >> value);
+                                applied.insert(*i);
+                            }
+                        }
+                        (Operand::VAR(a), Operand::LIT(b)) => {
+                            if let Some(value) = state.get(a) {
+                                state.insert(&expr.destination, value >> b);
+                                applied.insert(*i);
+                            }
+                        }
+                        (Operand::VAR(a), Operand::VAR(b)) => {
+                            if let (Some(a_value), Some(b_value)) = (state.get(a), state.get(b)) {
+                                state.insert(&expr.destination, a_value >> b_value);
+                                applied.insert(*i);
+                            }
+                        }
+                    }
+                }
+                Operator::NOT => match expr.operands.first().unwrap() {
+                    Operand::LIT(value) => {
+                        state.insert(&expr.destination, !*value);
+                        applied.insert(*i);
+                    }
+                    Operand::VAR(name) => {
+                        if let Some(value) = state.get(name) {
+                            state.insert(&expr.destination, !*value);
+                            applied.insert(*i);
+                        }
+                    }
+                },
+            }
+        }
+    }
+
+    println!("{:?}", state.get(&Variable::from_str("a")));
 }
