@@ -13,11 +13,10 @@ fn check_pass(pass: &str) -> bool {
             let mut prev_char: Option<char> = None;
             let mut seq_len = 1;
             for c in pass.chars() {
-                println!("{} {} {:?}", c, seq_len, prev_char);
                 match prev_char {
                     None => prev_char = Some(c),
                     Some(prev) => {
-                        if c as u8 - prev as u8 == 1 {
+                        if (c as u8).checked_sub(prev as u8) == Some(1) {
                             prev_char = Some(c);
                             seq_len += 1
                         } else {
@@ -35,14 +34,14 @@ fn check_pass(pass: &str) -> bool {
     }
 }
 
-fn increment_char(c: &mut char) -> bool {
-    match c {
+fn increment_char(c: &mut u8) -> bool {
+    match *c as char {
         'a'..='y' => {
-            *c = (*c as u8 + 1) as char;
+            *c = *c + 1;
             false
         }
         'z' => {
-            *c = 'a';
+            *c = 'a' as u8;
             true
         }
         _ => unimplemented!(),
@@ -50,11 +49,34 @@ fn increment_char(c: &mut char) -> bool {
 }
 
 fn increment_str(input: &mut str) {
-    for i in 0..input.len() {}
+    // assumes that the string is ascii
+    assert!(input.is_ascii());
+    unsafe {
+        let iter = input.as_bytes_mut();
+        iter.reverse();
+        for c in iter.iter_mut() {
+            if !increment_char(c) {
+                break;
+            }
+        }
+        iter.reverse();
+    }
 }
 
 fn main() {
-    let input: String = fs::read_to_string("input.txt").unwrap().trim().to_owned();
+    let mut input: String = fs::read_to_string("input.txt").unwrap().trim().to_owned();
+
+    while !check_pass(&input) {
+        increment_str(&mut input);
+    }
+
+    increment_str(&mut input);
+
+    while !check_pass(&input) {
+        increment_str(&mut input);
+    }
+
+    println!("{}", input);
 }
 
 #[cfg(test)]
