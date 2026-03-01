@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use regex::Regex;
 
 #[derive(Debug, PartialEq)]
@@ -6,6 +8,22 @@ struct Reindeer {
     speed: u64,
     time: u64,
     rest: u64,
+}
+
+fn fastest<'a>(reindeer: &'a Vec<Reindeer>, race_length: u64) -> &'a str {
+    let fastest = reindeer
+        .iter()
+        .map(|r| {
+            let full = race_length / (r.time + r.rest);
+            let part = race_length % (r.time + r.rest);
+
+            (
+                &r.name,
+                (r.speed * (r.time * full)) + (part.min(r.time) * r.speed),
+            )
+        })
+        .reduce(|best, next| if best.1 > next.1 { best } else { next });
+    fastest.unwrap().0
 }
 
 fn main() {
@@ -34,21 +52,16 @@ fn main() {
 
     println!("{:?}", reindeer);
 
-    let race_length = 2503;
-    // let race_length = 1000;
+    let mut score_card: HashMap<&str, u64> = HashMap::new();
 
-    let fastest = reindeer
-        .iter()
-        .map(|r| {
-            let full = race_length / (r.time + r.rest);
-            let part = race_length % (r.time + r.rest);
+    for i in 0..2503 {
+        let in_first = fastest(&reindeer, i);
+        if let Some(scorer) = score_card.get_mut(in_first) {
+            *scorer += 1;
+        } else {
+            score_card.insert(in_first, 1);
+        }
+    }
 
-            (
-                &r.name,
-                (r.speed * (r.time * full)) + (part.min(r.time) * r.speed),
-            )
-        })
-        .reduce(|best, next| if best.1 > next.1 { best } else { next });
-
-    println!("{:?}", fastest);
+    println!("{:?}", score_card);
 }
