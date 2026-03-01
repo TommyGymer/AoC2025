@@ -207,10 +207,17 @@ fn main() {
     let people_b: HashSet<&str> = relations.iter().map(|relation| relation.0.b).collect();
     let people = people_a.union(&people_b);
 
-    let num_people = people.clone().count();
+    let num_people = people.clone().count() + 1;
+    let mut people_vec: Vec<&str> = people.into_iter().map(|person| *person).collect();
+
+    for person in people_vec.iter() {
+        relations.insert(TwoPeople { a: "Me", b: person }, 0);
+    }
+
+    people_vec.push("Me");
 
     let result: i64 = solve(
-        &people.into_iter().map(|person| *person).collect(),
+        &people_vec,
         &vec![false; num_people],
         &relations,
         None,
