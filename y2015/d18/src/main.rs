@@ -99,15 +99,23 @@ impl Grid {
 
         for x in 0..self.width {
             for y in 0..self.height {
-                let number_of_neighbours = self.neighbours(x, y);
-                let this = self.get(x as i16, y as i16).unwrap();
+                match (x, y) {
+                    (0, 0) => self.get_mut_grid()[y][x] = true,
+                    (0, 99) => self.get_mut_grid()[y][x] = true,
+                    (99, 0) => self.get_mut_grid()[y][x] = true,
+                    (99, 99) => self.get_mut_grid()[y][x] = true,
+                    _ => {
+                        let number_of_neighbours = self.neighbours(x, y);
+                        let this = self.get(x as i16, y as i16).unwrap();
 
-                match (this, number_of_neighbours) {
-                    (true, 2 | 3) => self.get_mut_grid()[y][x] = true,
-                    (true, _) => self.get_mut_grid()[y][x] = false,
-                    (false, 3) => self.get_mut_grid()[y][x] = true,
-                    (false, _) => self.get_mut_grid()[y][x] = false,
-                };
+                        match (this, number_of_neighbours) {
+                            (true, 2 | 3) => self.get_mut_grid()[y][x] = true,
+                            (true, _) => self.get_mut_grid()[y][x] = false,
+                            (false, 3) => self.get_mut_grid()[y][x] = true,
+                            (false, _) => self.get_mut_grid()[y][x] = false,
+                        };
+                    }
+                }
             }
         }
 
