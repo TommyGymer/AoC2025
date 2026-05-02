@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 #[derive(Debug)]
 struct Rule {
     from: String,
@@ -32,4 +34,22 @@ fn main() {
 
     println!("Rules: {:#?}", rules);
     println!("Medicine: {}", medcine);
+
+    let mut new: HashSet<String> = HashSet::new();
+
+    for (i, c) in medcine.char_indices() {
+        for rule in rules {
+            if rule.from.len() == 1 {
+                if rule.from.chars().next().unwrap() == c {
+                    new.insert(medcine.clone());
+                }
+            }
+        }
+    }
+
+    let mut prev = None;
+    for c in medcine.chars() {
+        if let Some(p) = prev {}
+        prev = Some(c);
+    }
 }
