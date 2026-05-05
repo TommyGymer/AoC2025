@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Rule {
     from: String,
     to: String,
@@ -38,18 +38,33 @@ fn main() {
     let mut new: HashSet<String> = HashSet::new();
 
     for (i, c) in medcine.char_indices() {
-        for rule in rules {
+        for rule in &rules {
             if rule.from.len() == 1 {
                 if rule.from.chars().next().unwrap() == c {
-                    new.insert(medcine.clone());
+                    let mut mut_medicine = medcine.clone();
+                    mut_medicine.replace_range(i..i + 1, &rule.to);
+                    new.insert(mut_medicine);
                 }
             }
         }
     }
 
     let mut prev = None;
-    for c in medcine.chars() {
-        if let Some(p) = prev {}
+    for (i, c) in medcine.char_indices() {
+        if let Some(p) = prev {
+            for rule in &rules {
+                if rule.from.len() == 2 {
+                    let mut rule_from_iter = rule.from.chars();
+                    if rule_from_iter.next().unwrap() == p && rule_from_iter.next().unwrap() == c {
+                        let mut mut_medicine = medcine.clone();
+                        mut_medicine.replace_range(i - 1..i + 1, &rule.to);
+                        new.insert(mut_medicine);
+                    }
+                }
+            }
+        }
         prev = Some(c);
     }
+
+    println!("{}", new.into_iter().count());
 }
